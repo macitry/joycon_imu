@@ -47,10 +47,10 @@ class Joycon:
         }
         # 解算角度
         self.accl_theta = {name:Value('d', 0.0) for name in self.accl_names.values()}
-
+        self.thread = threading.Thread(target=self.update_IMU)
+        self.thread.start()
+    # 更新IMU数据
     def update_IMU(self):
-        # 读取IMU数据
-        print("received data")
         while True:
             try:
                 count=0
@@ -77,22 +77,22 @@ class Joycon:
                             elif axis_name in 'Z':
                                 self.IMU_RAW[axis_name].append(event.value*  (16 / 65534))
                                 if len(self.IMU_RAW['X'])and len(self.IMU_RAW['Y'])> 1:
+                                    if self.IMU_RAW['Z'][-1]==0:
+                                        self.IMU_RAW['Z'][-1]=0.0000001
                                     self.accl_theta['Y'].value=math.atan(self.IMU_RAW['X'][-1]/self.IMU_RAW['Z'][-1])
                                     self.accl_theta['X'].value=-math.atan(self.IMU_RAW['X'][-1]/math.sqrt(math.pow(self.IMU_RAW['Y'][-1],2)+math.pow(self.IMU_RAW['Z'][-1],2)))
                             # print("received data")
             except BlockingIOError:
                 print("BlockingIOError")
-joy_L = Joycon()
-start_time = time.time()
-print(f"start_time: {start_time}")
-thread = threading.Thread(target=joy_L.update_IMU)
+# joy_L = Joycon()
+# start_time = time.time()
+# print(f"start_time: {start_time}")
 
-thread.start()
-while True:
-    end_time = time.time()
-    time.sleep(0.005)
-    print(f"RX: {joy_L.gyro_theta['RX'].value:.3f}, RY: {joy_L.gyro_theta['RY'].value:.3f}, RZ: {joy_L.gyro_theta['RZ'].value:.3f},X:{joy_L.accl_theta['X'].value:.3f},Y:{joy_L.accl_theta['Y'].value:.3f}======interval: {(end_time - start_time)*1000}ms")
-    start_time=end_time
-    # time.sleep(0.1)
-thread.join()
-print("Thread finished")
+# while True:
+#     end_time = time.time()
+#     time.sleep(0.005)
+#     print(f"RX: {joy_L.gyro_theta['RX'].value:.3f}, RY: {joy_L.gyro_theta['RY'].value:.3f}, RZ: {joy_L.gyro_theta['RZ'].value:.3f},X:{joy_L.accl_theta['X'].value:.3f},Y:{joy_L.accl_theta['Y'].value:.3f}======interval: {(end_time - start_time)*1000}ms")
+#     start_time=end_time
+
+# thread.join()
+# print("Thread finished")

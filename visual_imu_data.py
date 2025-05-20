@@ -1,134 +1,57 @@
-## 用于显示手柄原始IMU数据
-
-from evdev import InputDevice, categorize, ecodes
-import matplotlib.pyplot as plt
-import matplotlib.animation as animation
-import time
 import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib.animation import FuncAnimation
+import random
+from joycon import Joycon
+# 初始化数据
+joy_L = Joycon()
+titles = [
+    {"rx":joy_L.gyro_theta['RX']},
+    {"ry":joy_L.gyro_theta['RY']},
+    {"rz":joy_L.gyro_theta['RZ']},
+    {"ax":joy_L.accl_theta['X']},
+    {"ay":joy_L.accl_theta['Y']},
+    {"az":joy_L.accl_theta['Z']},
+]
+
+max_points = 100  # 每个子图最多显示100个点
+rows=2
+cols=3
+x_data = np.arange(max_points)  # 初始化x轴数据
+y_data = np.zeros((rows*cols, max_points))  # 初始化6个子图的y轴数据
+y_data_max = np.full((rows * cols), 2) 
+y_data_min = np.zeros((rows*cols))
+line_width = 1
+# 设置图表和子图
+fig, axs = plt.subplots(rows, cols, figsize=(15, 10))  # 创建2×3的子图布局
+lines = []  # 存储每个子图的线对象
 
 
-# 替换为你的 Joy-Con 设备路径，例如 /dev/input/event21
-device_path = "/dev/input/event22"
+for i in range(rows):
+    for j in range(cols):
+        if rows==1 or cols==1:
+            line, = axs[i*cols + j].plot(x_data, y_data[i * cols + j], lw=line_width)  # 初始化线对象
+            axs[i*cols + j].set_xlim(0, max_points)  # 设置x轴范围
+            axs[i*cols + j].set_ylim(y_data_min[i * cols + j], y_data_max[i * cols + j])  # 设置y轴范围
+            axs[i*cols + j].set_title(list(titles[i * cols + j].keys())[0])
+        else:
+            line, = axs[i, j].plot(x_data, y_data[i * cols + j], lw=line_width)  # 初始化线对象
+            axs[i, j].set_xlim(0, max_points)  # 设置x轴范围
+            axs[i, j].set_ylim(y_data_min[i * cols + j], y_data_max[i * cols + j])  # 设置y轴范围
+            axs[i, j].set_title(list(titles[i * cols + j].keys())[0])
+        lines.append(line)
 
-# 打开设备
-device = InputDevice(device_path)
-
-print(f"Listening for events on {device.name}")
-start = time.time()
-
-# 定义一个字典来存储轴的名称
-axis_names = {
-    ecodes.ABS_RX: 'RX',
-    ecodes.ABS_RY: 'RY',
-    ecodes.ABS_RZ: 'RZ',
-    ecodes.ABS_X: 'X',
-    ecodes.ABS_Y: 'Y',
-    ecodes.ABS_Z: 'Z'
-}
-
-# 初始化数据存储
-data = {name: [] for name in axis_names.values()}
-times = []
-
-# 初始化 matplotlib 图表
-fig, axes = plt.subplots(len(axis_names), 1, figsize=(10, 15), sharex=True)
-lines = []
-
-for ax, name in zip(axes, axis_names.values()):
-    line, = ax.plot([], [], label=name)
-    lines.append(line)
-    ax.set_title(name)
-    ax.set_ylabel('Value')
-    ax.legend()
-
-axes[-1].set_xlabel('Time (s)')
-# TODO: 计算每个轴的基础偏置量，用于后续计算
-theta_rx_zero=0
-theta_delta_rx=0
-count_rx=0
-theta_ry_zero=0
-theta_delta_ry=0
-count_ry=0
-theta_rz_zero=0
-theta_delta_rz=0
-count_rz=0
-rx_bias=0.0058
-ry_bias=-0.01061
-rz_bias=-0.01031
-
+# 更新函数
 def update(frame):
-    global times, data, start
-    global theta_rx_zero,theta_delta_rx,count_rx
-    global theta_ry_zero,theta_delta_ry,count_ry
-    global theta_rz_zero,theta_delta_rz,count_rz
-    try:
-        for event in device.read():
-            if event.type == ecodes.EV_ABS:
-                if event.code in axis_names:
-                    axis_name = axis_names[event.code]
-                    if axis_name in ['RX', 'RY', 'RZ']:
-                        # 处理 RX, RY, RZ 轴的值
-                        data[axis_name].append(event.value * (4000 / 65534000))
-                        if len(data[axis_name]) > 1:
-                            if axis_name == 'RX':
-                                if count_rx==2000:
-                                    print("rx_zero:",theta_rx_zero/2000)
-                                    count_rx+=1
-                                elif count_rx<2000:
-                                    theta_delta_rx=(data[axis_name][-1] + data[axis_name][-2])*0.005/2
-                                    theta_rx_zero=theta_rx_zero+theta_delta_rx-rx_bias
-                                    # print(f"theta_delta_{axis_name}:{theta_delta_rx}||rx_w(dps):{data[axis_name][-1]}")
-                                    print(f"theta_{axis_name}:{theta_rx_zero}")
-                                    count_rx+=1
-                            elif axis_name == 'RY':
-                                if count_ry==2000:
-                                    print("ry_zero:",theta_ry_zero/2000)
-                                    count_ry+=1
-                                elif count_ry<2000:
-                                    theta_delta_ry=(data[axis_name][-1] + data[axis_name][-2])*0.005/2
-                                    theta_ry_zero=theta_ry_zero+theta_delta_ry-ry_bias
-                                    # print(f"theta_delta_{axis_name}:{theta_delta_ry}||ry_w(dps):{data[axis_name][-1]}")
-                                    print(f"theta_{axis_name}:{theta_ry_zero}")
-                                    count_ry+=1
-                            elif axis_name == 'RZ':
-                                if count_rz==2000:
-                                    print("rz_zero:",theta_rz_zero/2000)
-                                    count_rz+=1
-                                elif count_rz<2000:
-                                    theta_delta_rz=(data[axis_name][-1] + data[axis_name][-2])*0.005/2
-                                    theta_rz_zero=theta_rz_zero+theta_delta_rz-rz_bias
-                                    # print(f"theta_delta_{axis_name}:{theta_delta_rz}||rz_w(dps):{data[axis_name][-1]}")
-                                    print(f"theta_{axis_name}:{theta_rz_zero}")
-                                    count_rz+=1
-                    else:
-                        data[axis_name].append(event.value*  (16 / 65534))
-                    times.append(time.time() - start)
-    except BlockingIOError:
-        pass
-    
-    # 确保数据长度一致
-    min_length = min(len(times), *[len(data[name]) for name in axis_names.values()])
-    times = times[:min_length]
-    for name in axis_names.values():
-        data[name] = data[name][:min_length]
-
-    # 更新图表数据
-    for line, name, ax in zip(lines, axis_names.values(), axes):
-        line.set_xdata(times)
-        line.set_ydata(data[name])
-        line.axes.set_xlim(0, max(times, default=1))  # 动态调整 X 轴范围
-        if len(data[name]) > 0:  # 确保数据不为空
-            ax.set_ylim(min(data[name]), max(data[name]))  # 动态调整 Y 轴范围
-        ax.relim()
-        ax.autoscale_view()
-
+    for i in range(rows):
+        for j in range(cols):
+            y_data[i*cols + j] = np.append(y_data[i*cols + j][1:], list(titles[i * cols + j].values())[0].value)  # 更新数据，移除第一个元素，添加新数据
+            lines[i*cols + j].set_ydata(y_data[i*cols + j])  # 更新线的数据
+            axs[i, j].set_ylim(np.min(y_data[i*cols + j]), np.max(y_data[i*cols + j]))  # 设置y轴范围
     return lines
 
-# 记录开始时间
-start = time.time()
-
 # 创建动画
-ani = animation.FuncAnimation(fig, update, interval=100, blit=True)
+ani = FuncAnimation(fig, update, interval=5, blit=False)
 
 # 显示图表
 plt.show()
