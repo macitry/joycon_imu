@@ -34,17 +34,17 @@ for i in range(rows):
             axs[i*cols + j].set_xlim(0, max_points)  # 设置x轴范围
             axs[i*cols + j].set_ylim(y_data_min[i * cols + j], y_data_max[i * cols + j])  # 设置y轴范围
             if len(titles)<(i * cols + j+1):
-                axs[i*cols + j].set_title(i * cols + j, loc='bottom')
+                axs[i*cols + j].set_title(i * cols + j)
             else:
-                axs[i*cols + j].set_title(list(titles[i * cols + j].keys())[0], loc='bottom')
+                axs[i*cols + j].set_title(list(titles[i * cols + j].keys())[0])
         else:
             line, = axs[i, j].plot(x_data, y_data[i * cols + j], lw=line_width)  # 初始化线对象
             axs[i, j].set_xlim(0, max_points)  # 设置x轴范围
             axs[i, j].set_ylim(y_data_min[i * cols + j], y_data_max[i * cols + j])  # 设置y轴范围
             if len(titles)<(i * cols + j+1):
-                axs[i, j].set_title(i * cols + j, loc='bottom')
+                axs[i, j].set_title(i * cols + j)
             else:
-                axs[i, j].set_title(list(titles[i * cols + j].keys())[0], loc='bottom')
+                axs[i, j].set_title(list(titles[i * cols + j].keys())[0])
         lines.append(line)
 
 # 更新函数
