@@ -6,16 +6,22 @@ from joycon import Joycon
 # 初始化数据
 joy_L = Joycon()
 titles = [
-    {"rx":joy_L.gyro_theta['RX']},
-    {"ry":joy_L.gyro_theta['RY']},
-    {"rz":joy_L.gyro_theta['RZ']},
-    {"ax":joy_L.accl_theta['X']},
-    {"ay":joy_L.accl_theta['Y']},
-    {"az":joy_L.accl_theta['Z']},
+    {"raw_rx":joy_L.IMU_RAW_NEW['RX']},
+    {"raw_ry":joy_L.IMU_RAW_NEW['RY']},
+    {"raw_rz":joy_L.IMU_RAW_NEW['RZ']},
+    {"raw_ax":joy_L.IMU_RAW_NEW['X']},
+    {"raw_ay":joy_L.IMU_RAW_NEW['Y']},
+    {"raw_az":joy_L.IMU_RAW_NEW['Z']},
+    {"theta_rx":joy_L.gyro_theta['RX']},
+    {"theta_ry":joy_L.gyro_theta['RY']},
+    {"theta_rz":joy_L.gyro_theta['RZ']},
+    {"theta_ax":joy_L.accl_theta['X']},
+    {"theta_ay":joy_L.accl_theta['Y']},
+    {"theta_az":joy_L.accl_theta['Z']},
 ]
 
 max_points = 100  # 每个子图最多显示100个点
-rows=3
+rows=4
 cols=3
 x_data = np.arange(max_points)  # 初始化x轴数据
 y_data = np.zeros((rows*cols, max_points))  # 初始化6个子图的y轴数据
@@ -54,7 +60,10 @@ def update(frame):
             if len(titles)<(i * cols + j+1):
                 y_data[i*cols + j] = np.append(y_data[i*cols + j][1:], 0)  # 更新数据，移除第一个元素，添加新数据
             else:
-                y_data[i*cols + j] = np.append(y_data[i*cols + j][1:], list(titles[i * cols + j].values())[0].value)  # 更新数据，移除第一个元素，添加新数据
+                # if (i * cols + j+1)>6:
+                    y_data[i*cols + j] = np.append(y_data[i*cols + j][1:], list(titles[i * cols + j].values())[0].value)
+                # elif(i * cols + j+1)<=6:
+                #     y_data[i*cols + j] = np.append(y_data[i*cols + j][1:], list(titles[i * cols + j].values())[0][-1]) # 更新数据，移除第一个元素，添加新数据
             lines[i*cols + j].set_ydata(y_data[i*cols + j])  # 更新线的数据
             axs[i, j].set_ylim(np.min(y_data[i*cols + j]), np.max(y_data[i*cols + j]))  # 设置y轴范围
     return lines

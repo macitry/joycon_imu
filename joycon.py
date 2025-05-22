@@ -22,7 +22,8 @@ class Joycon:
             ecodes.ABS_Z: 'Z'
         }
         # IMU 原始数据
-        self.IMU_RAW = {name: [] for name in self.axis_names.values()}
+        self.IMU_RAW_LIST = {name: [] for name in self.axis_names.values()}
+        self.IMU_RAW_NEW = {name:Value('d', 0.0) for name in self.axis_names.values()}
         # 陀螺仪轴对应名称
         self.gyro_names = {
             ecodes.ABS_RX: 'RX',
@@ -47,8 +48,10 @@ class Joycon:
         }
         # 解算角度
         self.accl_theta = {name:Value('d', 0.0) for name in self.accl_names.values()}
-        self.thread = threading.Thread(target=self.update_IMU)
-        self.thread.start()
+        self.thread_receive = threading.Thread(target=self.update_IMU)
+        self.thread_receive.start()
+        self.thread_state = threading.Thread(target=self.filter_KF)
+        self.thread_state.start()
     # 更新IMU数据
     def update_IMU(self):
         while True:
@@ -63,36 +66,56 @@ class Joycon:
                             axis_name = self.axis_names[event.code]
                             if axis_name in ['RX', 'RY', 'RZ']:
                                 # 处理 RX, RY, RZ 轴的值  gryo数据 角速度计
-                                self.IMU_RAW[axis_name].append(event.value * (4000 / 65534000))
-                                if len(self.IMU_RAW[axis_name]) > 1:
+                                self.IMU_RAW_LIST[axis_name].append(event.value * (4000 / 65534000))
+                                self.IMU_RAW_NEW[axis_name].value=self.IMU_RAW_LIST[axis_name][-1]
+                                if len(self.IMU_RAW_LIST[axis_name]) > 1:
                                     # 计算角度微分
-                                    self.theta_delta[axis_name]=(self.IMU_RAW[axis_name][-1] + self.IMU_RAW[axis_name][-2])*0.005/2
+                                    self.theta_delta[axis_name]=(self.IMU_RAW_LIST[axis_name][-1] + self.IMU_RAW_LIST[axis_name][-2])*0.005/2
                                     # 计算角度积分(减去偏置)
                                     self.gyro_theta[axis_name].value=self.gyro_theta[axis_name].value+self.theta_delta[axis_name]-self.gyro_bias[axis_name]
                             elif axis_name in 'X':
                                 # 处理 X, Y, Z 轴的值   accel数据 加速度计
-                                self.IMU_RAW[axis_name].append(event.value*  (16 / 65534))
+                                self.IMU_RAW_LIST[axis_name].append(event.value*  (16 / 65534)*9.8)
+                                self.IMU_RAW_NEW[axis_name].value=self.IMU_RAW_LIST[axis_name][-1]
                             elif axis_name in 'Y':
-                                self.IMU_RAW[axis_name].append(event.value*  (16 / 65534))
+                                self.IMU_RAW_LIST[axis_name].append(event.value*  (16 / 65534)*9.8)
+                                self.IMU_RAW_NEW[axis_name].value=self.IMU_RAW_LIST[axis_name][-1]
                             elif axis_name in 'Z':
-                                self.IMU_RAW[axis_name].append(event.value*  (16 / 65534))
-                                if len(self.IMU_RAW['X'])and len(self.IMU_RAW['Y'])> 1:
-                                    if self.IMU_RAW['Z'][-1]==0:
-                                        self.IMU_RAW['Z'][-1]=0.0000001
-                                    self.accl_theta['Y'].value=math.atan(self.IMU_RAW['X'][-1]/self.IMU_RAW['Z'][-1])
-                                    self.accl_theta['X'].value=-math.atan(self.IMU_RAW['X'][-1]/math.sqrt(math.pow(self.IMU_RAW['Y'][-1],2)+math.pow(self.IMU_RAW['Z'][-1],2)))
+                                self.IMU_RAW_LIST[axis_name].append(event.value*  (16 / 65534)*9.8)
+                                self.IMU_RAW_NEW[axis_name].value=self.IMU_RAW_LIST[axis_name][-1]
+                                if len(self.IMU_RAW_LIST['X'])and len(self.IMU_RAW_LIST['Y'])> 1:
+                                    if self.IMU_RAW_LIST['Z'][-1]==0:
+                                        self.IMU_RAW_LIST['Z'][-1]=0.0000001
+                                    temp_ax=math.atan(self.IMU_RAW_LIST['Y'][-1]/self.IMU_RAW_LIST['Z'][-1])
+                                    self.accl_theta['X'].value=(temp_ax/math.pi)*180
+                                    temp_ry=-math.atan(self.IMU_RAW_LIST['X'][-1]/math.sqrt(math.pow(self.IMU_RAW_LIST['Y'][-1],2)+math.pow(self.IMU_RAW_LIST['Z'][-1],2)))
+                                    self.accl_theta['Y'].value=(temp_ry/math.pi)*180
                             # print("received data")
             except BlockingIOError:
                 print("BlockingIOError")
-# joy_L = Joycon()
-# start_time = time.time()
-# print(f"start_time: {start_time}")
-
-# while True:
-#     end_time = time.time()
-#     time.sleep(0.005)
-#     print(f"RX: {joy_L.gyro_theta['RX'].value:.3f}, RY: {joy_L.gyro_theta['RY'].value:.3f}, RZ: {joy_L.gyro_theta['RZ'].value:.3f},X:{joy_L.accl_theta['X'].value:.3f},Y:{joy_L.accl_theta['Y'].value:.3f}======interval: {(end_time - start_time)*1000}ms")
-#     start_time=end_time
-
-# thread.join()
-# print("Thread finished")
+    def filter_KF(self, data):
+        dt=0.005
+        F=np.array([
+            [1,-dt]
+           ,[0,  1]
+        ])
+        B=np.array([
+            [dt]
+           ,[0]
+        ])
+        P=np.array([
+            [0,0]
+           ,[0,0]
+        ])
+        Q_theta=0.001
+        Q_omega_b=0.003
+        Q_k=np.array([
+            [Q_theta,0]
+           ,[0,Q_omega_b]
+        ])
+        R_measure=0.03
+        R=R_measure
+        H=np.array([
+            [1,0]]
+        )
+        I=np.eye(2)
