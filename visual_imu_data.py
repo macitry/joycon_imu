@@ -6,22 +6,24 @@ from joycon import Joycon
 # 初始化数据
 joy_L = Joycon()
 titles = [
-    {"raw_rx":joy_L.IMU_RAW_NEW['RX']},
-    {"raw_ry":joy_L.IMU_RAW_NEW['RY']},
-    {"raw_rz":joy_L.IMU_RAW_NEW['RZ']},
-    {"raw_ax":joy_L.IMU_RAW_NEW['X']},
-    {"raw_ay":joy_L.IMU_RAW_NEW['Y']},
-    {"raw_az":joy_L.IMU_RAW_NEW['Z']},
+    # {"raw_rx":joy_L.IMU_RAW_NEW['RX']},
+    # {"raw_ry":joy_L.IMU_RAW_NEW['RY']},
+    # {"raw_rz":joy_L.IMU_RAW_NEW['RZ']},
+    # {"raw_ax":joy_L.IMU_RAW_NEW['X']},
+    # {"raw_ay":joy_L.IMU_RAW_NEW['Y']},
+    # {"raw_az":joy_L.IMU_RAW_NEW['Z']},
     {"theta_rx":joy_L.gyro_theta['RX']},
     {"theta_ry":joy_L.gyro_theta['RY']},
     {"theta_rz":joy_L.gyro_theta['RZ']},
     {"theta_ax":joy_L.accl_theta['X']},
     {"theta_ay":joy_L.accl_theta['Y']},
     {"theta_az":joy_L.accl_theta['Z']},
+    {"KF_rx":joy_L.IMU_KF['RX']},
+    {"KF_ry":joy_L.IMU_KF['RY']}
 ]
 
 max_points = 100  # 每个子图最多显示100个点
-rows=4
+rows=3
 cols=3
 x_data = np.arange(max_points)  # 初始化x轴数据
 y_data = np.zeros((rows*cols, max_points))  # 初始化6个子图的y轴数据

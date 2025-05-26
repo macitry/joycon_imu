@@ -24,6 +24,7 @@ class Joycon:
         # IMU 原始数据
         self.IMU_RAW_LIST = {name: [] for name in self.axis_names.values()}
         self.IMU_RAW_NEW = {name:Value('d', 0.0) for name in self.axis_names.values()}
+        self.IMU_KF = {name:Value('d', 0.0) for name in self.axis_names.values()}
         # 陀螺仪轴对应名称
         self.gyro_names = {
             ecodes.ABS_RX: 'RX',
@@ -34,7 +35,7 @@ class Joycon:
         self.gyro_bias = {name: 0 for name in self.gyro_names.values()}
         self.gyro_bias['RX'] = 0.0058
         self.gyro_bias['RY'] = -0.01061
-        self.gyro_bias['RZ'] = -0.01031
+        self.gyro_bias['RZ'] = -0.01035
         # 角度微分
         self.theta_delta = {name: 0 for name in self.gyro_names.values()}
         # 角度
@@ -93,29 +94,95 @@ class Joycon:
                             # print("received data")
             except BlockingIOError:
                 print("BlockingIOError")
-    def filter_KF(self, data):
+    def filter_KF(self):
         dt=0.005
         F=np.array([
-            [1,-dt]
-           ,[0,  1]
+            [1,-dt,0,0]
+           ,[0,  1,0,0]
+           ,[0,  0,1,-dt]
+           ,[0,  0,0, 1]
         ])
         B=np.array([
-            [dt]
-           ,[0]
-        ])
-        P=np.array([
-            [0,0]
+            [dt,0]
+           ,[0,0]
+           ,[0,dt]
            ,[0,0]
         ])
+        P_0=np.array([
+            [0,0,0,0]
+           ,[0,0,0,0]
+           ,[0,0,0,0]
+           ,[0,0,0,0]
+        ])
+        P_k=P_0
         Q_theta=0.001
         Q_omega_b=0.003
-        Q_k=np.array([
-            [Q_theta,0]
-           ,[0,Q_omega_b]
+        Q=np.array([
+            [Q_theta,0,0,0]
+           ,[0,Q_omega_b,0,0]
+           ,[0,0,Q_theta,0]
+           ,[0,0,0,Q_omega_b]
         ])
-        R_measure=0.03
-        R=R_measure
+        Q=Q*dt
+        R_measure=0.06
+        R=np.array([
+            [R_measure,0],
+            [0,R_measure]
+        ])
+
         H=np.array([
-            [1,0]]
-        )
-        I=np.eye(2)
+            [1,0,0,0],
+            [0,0,1,0]
+        ])
+        omega_b=0.0058
+        X_0=np.array([
+             [0]
+            ,[omega_b]
+            ,[0]
+            ,[omega_b]
+        ])
+        X_k=X_0
+        
+        I=np.eye(4)
+        K_0=np.array([
+            [0.5,0],
+            [0.5,0],
+            [0,0.5],
+            [0,0.5]
+        ])
+        K_k=K_0
+        u_k=np.array([
+            [0]
+           ,[0]
+        ])
+        z_k=np.array([
+            [0]
+           ,[0]
+        ])
+        y_k=np.array([
+            [0]
+           ,[0]
+        ])
+        start_time=time.time()
+        while (True):
+            if u_k[0][0]!=self.IMU_RAW_NEW["RX"].value:
+
+                u_k[0][0]=self.IMU_RAW_NEW["RX"].value
+                u_k[1][0]=self.IMU_RAW_NEW["RY"].value
+                z_k[0][0]= self.accl_theta['X'].value
+                z_k[1][0]= self.accl_theta['Y'].value
+
+                X_k=F@X_k+B@u_k
+                self.IMU_KF["RX"].value=X_k[0][0]
+                self.IMU_KF["RY"].value=X_k[2][0]
+                P_k=F@P_k@F.T+Q
+                K_k=P_k@H.T@np.linalg.inv(H@P_k@H.T+R)
+                print("K_k",K_k)
+                y_k=z_k-H@(X_k)
+                print("H@X_k",H@X_k)
+                X_k=X_k+K_k@y_k
+                P_k=(I-K_k@H)@P_k
+            time.sleep(0.001)
+
+
+            
