@@ -7,6 +7,7 @@ import os
 import threading
 from multiprocessing import Value, Array
 import math
+from scipy.spatial.transform import Rotation as R
 class Joycon:
     def __init__(self, device_path="/dev/input/event22"):
         device_path_IMU = device_path
@@ -186,6 +187,15 @@ class Joycon:
                 X_k=X_k+K_k@y_k
                 P_k=(I-K_k@H)@P_k
             time.sleep(0.001)
+    def get_Quaternion(self):
+            rx=self.IMU_KF["RX"].value
+            ry=self.IMU_KF["RY"].value
+            rz=self.gyro_theta["RZ"].value
+            rotation = R.from_euler('xyz', [rx, ry, rz], degrees=True)
+            # 获取四元数
+            quaternion = rotation.as_quat()
+            return quaternion
+    
     def __del__(self):
         # 设置线程运行标志为 False
         self.running = False

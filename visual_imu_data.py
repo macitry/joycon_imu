@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
-import random
+
 from joycon import Joycon
 # 初始化数据
 joy_L = Joycon()
@@ -62,10 +62,7 @@ def update(frame):
             if len(titles)<(i * cols + j+1):
                 y_data[i*cols + j] = np.append(y_data[i*cols + j][1:], 0)  # 更新数据，移除第一个元素，添加新数据
             else:
-                # if (i * cols + j+1)>6:
                     y_data[i*cols + j] = np.append(y_data[i*cols + j][1:], list(titles[i * cols + j].values())[0].value)
-                # elif(i * cols + j+1)<=6:
-                #     y_data[i*cols + j] = np.append(y_data[i*cols + j][1:], list(titles[i * cols + j].values())[0][-1]) # 更新数据，移除第一个元素，添加新数据
             lines[i*cols + j].set_ydata(y_data[i*cols + j])  # 更新线的数据
             axs[i, j].set_ylim(np.min(y_data[i*cols + j]), np.max(y_data[i*cols + j]))  # 设置y轴范围
     return lines
