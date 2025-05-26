@@ -49,13 +49,16 @@ class Joycon:
         }
         # 解算角度
         self.accl_theta = {name:Value('d', 0.0) for name in self.accl_names.values()}
+
+        self.running = True
         self.thread_receive = threading.Thread(target=self.update_IMU)
         self.thread_receive.start()
         self.thread_state = threading.Thread(target=self.filter_KF)
         self.thread_state.start()
+        
     # 更新IMU数据
     def update_IMU(self):
-        while True:
+        while self.running :
             try:
                 count=0
                 for event in self.device.read():
@@ -164,7 +167,7 @@ class Joycon:
            ,[0]
         ])
         start_time=time.time()
-        while (True):
+        while self.running :
             if u_k[0][0]!=self.IMU_RAW_NEW["RX"].value:
 
                 u_k[0][0]=self.IMU_RAW_NEW["RX"].value
@@ -183,6 +186,13 @@ class Joycon:
                 X_k=X_k+K_k@y_k
                 P_k=(I-K_k@H)@P_k
             time.sleep(0.001)
+    def __del__(self):
+        # 设置线程运行标志为 False
+        self.running = False
+        # 等待线程结束
+        self.thread_receive.join()
+        self.thread_state.join()
+        print("Threads have been stopped.")
 
 
             
