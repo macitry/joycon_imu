@@ -1,8 +1,9 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
-
-from joycon import Joycon
+import sys
+sys.path.append('/home/mac/joycon_pro')
+from driver.joycon import Joycon
 # 初始化数据
 joy_L = Joycon()
 titles = [

@@ -181,9 +181,9 @@ class Joycon:
                 self.IMU_KF["RY"].value=X_k[2][0]
                 P_k=F@P_k@F.T+Q
                 K_k=P_k@H.T@np.linalg.inv(H@P_k@H.T+R)
-                print("K_k",K_k)
+                # print("K_k",K_k)
                 y_k=z_k-H@(X_k)
-                print("H@X_k",H@X_k)
+                # print("H@X_k",H@X_k)
                 X_k=X_k+K_k@y_k
                 P_k=(I-K_k@H)@P_k
             time.sleep(0.001)
