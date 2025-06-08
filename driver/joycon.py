@@ -9,7 +9,7 @@ from multiprocessing import Value, Array
 import math
 from scipy.spatial.transform import Rotation as R
 class Joycon:
-    def __init__(self, device_path="/dev/input/event22",filter_type='CF'):
+    def __init__(self, device_path="/dev/input/event22",filter_type='KF'):
         device_path_IMU = device_path
         self.device = InputDevice(device_path_IMU)
         os.set_blocking(self.device.fd, True)
